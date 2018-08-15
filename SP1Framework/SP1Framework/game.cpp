@@ -16,6 +16,8 @@ double  g_dDeltaTime;
 bool    g_abKeyPressed[K_COUNT];
 int Choice;
 char mapStorage[100][100];
+int NumberDIE = 0;
+int NewX = 0, NewY = 28;
 
 // Game specific variables here
 SGameChar   g_sChar;
@@ -41,8 +43,8 @@ void init( void )
     // sets the initial state for the game
     g_eGameState = S_GAMEMENU;
 
-    g_sChar.m_cLocation.X = g_Console.getConsoleSize().X / 2;
-    g_sChar.m_cLocation.Y = g_Console.getConsoleSize().Y / 2;
+    g_sChar.m_cLocation.X = 0; // SET SPAWN POINT/ RESPAWN
+    g_sChar.m_cLocation.Y = 28;
     g_sChar.m_bActive = true;
     // sets the width, height and the font name to use in the console
     g_Console.setConsoleFont(0, 16, L"Consolas");
@@ -134,6 +136,7 @@ void render()
 			
     }
     renderFramerate();  // renders debug information, frame rate, elapsed time, etc
+	renderDIE();
     renderToScreen();   // dump the contents of the buffer to the screen, one frame worth of game
 }
 
@@ -176,6 +179,10 @@ void gameplay()            // gameplay logic
     processUserInput(); // checks if you should change states or do something else with the game, e.g. pause, exit
     moveCharacter();    // moves the character, collision detection, physics, etc
                         // sound can be played here too.
+	if (NumberDIE == 3)
+	{
+		g_bQuitGame = true;
+	}
 }
 
 void moveCharacter()
@@ -235,8 +242,38 @@ if (bSomethingHappened)
 {
 	// set the bounce time to some time in the future to prevent accidental triggers
 	g_dBounceTime = g_dElapsedTime + 0.125; // 125ms should be enough
+
+	if (mapStorage[(int)g_sChar.m_cLocation.Y - 1][(int)g_sChar.m_cLocation.X] == 'S') //TRAP "SPIKE" 'y-1'
+	{
+		RespawnAt();
+		NumberDIE++;
+	}
+
+	if (mapStorage[(int)g_sChar.m_cLocation.Y - 1][(int)g_sChar.m_cLocation.X] == 'E') //TRAP "ELECTRIC FLOOR" 'y-1'
+	{
+		RespawnAt();
+		NumberDIE++;
+	}
+
+	if (mapStorage[(int)g_sChar.m_cLocation.Y - 1][(int)g_sChar.m_cLocation.X] == 'C') // CHECKPOINT
+	{
+		NewX = g_sChar.m_cLocation.X;
+		NewY = g_sChar.m_cLocation.Y;
+
+
+	}
+
 }
+
 }
+
+void RespawnAt()
+{
+	g_sChar.m_cLocation.X = NewX;
+	g_sChar.m_cLocation.Y = NewY;
+}
+
+
 void processUserInput()
 {
 	// quits the game if player hits the escape key
@@ -376,11 +413,26 @@ void renderCharacter()
     g_Console.writeToBuffer(g_sChar.m_cLocation, (char)1, charColor);
 }
 
+void renderDIE()
+{
+	COORD c;
+	std::ostringstream die;
+
+	die << "OOF! x" << NumberDIE;
+	c.X = g_Console.getConsoleSize().X - 20;
+	c.Y = 18;
+	g_Console.writeToBuffer(c, die.str(), 0x0f);
+}
+
+
+
 void renderFramerate()
 {
     COORD c;
     // displays the framerate
     std::ostringstream ss;
+	std::ostringstream cd;
+	std::ostringstream ra;
     ss << std::fixed << std::setprecision(3);
     ss << 1.0 / g_dDeltaTime << "fps";
     c.X = g_Console.getConsoleSize().X - 9;
@@ -393,6 +445,17 @@ void renderFramerate()
     c.X = 0;
     c.Y = 0;
     g_Console.writeToBuffer(c, ss.str(), 0x59);
+
+
+	cd << "(" << g_sChar.m_cLocation.X << ", " << g_sChar.m_cLocation.Y <<")"; //coord
+	c.X = g_Console.getConsoleSize().X - 20;
+	c.Y = 20;
+	g_Console.writeToBuffer(c, cd.str(), 0x0f);
+
+	ra << "Respawn at: (" << NewX << ", " << NewY << ")"; //coord
+	c.X = g_Console.getConsoleSize().X - 25;
+	c.Y = 16;
+	g_Console.writeToBuffer(c, ra.str(), 0x0f);
 }
 void renderToScreen()
 {
